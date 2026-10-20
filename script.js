@@ -1093,25 +1093,54 @@ function renderAuthScreen(mode='login',error=''){
   refreshIcons();
 }
 
-function renderOnboarding(error=''){
+function renderOnboarding(error='',draft={}){
+  const value=(key)=>esc(String(draft[key]||''));
+  const selected=(key,expected)=>draft[key]===expected?' selected':'';
+  const checked=(key,expected)=>draft[key]===expected?' checked':'';
   authRoot.innerHTML='<section class="auth-screen"><div class="auth-card card">'
     +'<div class="auth-brand">Blox<span>forge</span></div>'
     +'<div class="lab">AVANT DE COMMENCER · 1 MINUTE</div>'
-    +'<h1>Faisons connaissance.</h1><p class="auth-subtitle">Quelques réponses nous aident à mieux comprendre les créateurs de BLOXFORGE.</p>'
+    +'<div class="onboarding-progress" aria-label="Progression du questionnaire"><span id="onboardingProgress">Étape 1 sur 3</span><div class="onboarding-progress-track"><i id="onboardingProgressValue"></i></div></div>'
+    +'<h1>Faisons connaissance.</h1><p class="auth-subtitle">Répondez à une question à la fois. Vos réponses nous aident à mieux comprendre la communauté BLOXFORGE.</p>'
     +(error?'<p class="auth-error" role="alert">'+esc(error)+'</p>':'')
-    +'<form class="auth-form" id="onboardingForm">'
-    +'<label for="discovery">Où as-tu découvert BLOXFORGE ?<select id="discovery" name="discovery" required><option value="">Choisir une réponse…</option><option value="youtube">YouTube</option><option value="social">Réseaux sociaux</option><option value="friend">Recommandation d’un proche</option><option value="search">Moteur de recherche</option><option value="roblox">Roblox</option><option value="other">Autre</option></select></label>'
-    +'<label for="attributionName">Nom de la personne ou chaîne qui te l’a recommandé<input id="attributionName" name="attributionName" type="text" minlength="2" maxlength="120" placeholder="Ex. Nom de la chaîne YouTube"><span class="creator-help">Obligatoire pour YouTube, les réseaux sociaux et une recommandation.</span></label>'
-    +'<label for="whyBloxforge">Pourquoi as-tu choisi BLOXFORGE ?<textarea id="whyBloxforge" name="whyBloxforge" rows="3" minlength="3" maxlength="500" placeholder="Dis-nous ce que tu aimerais apprendre ou créer…" required></textarea></label>'
-    +'<fieldset style="border:0;display:grid;gap:8px"><legend style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:5px">Tu veux utiliser BLOXFORGE comme…</legend>'
-    +'<div class="auth-choices"><label class="auth-choice"><input type="radio" name="role" value="consumer" required><span><b>Consommateur</b><small>Découvrir et suivre des formations.</small></span></label>'
-    +'<label class="auth-choice"><input type="radio" name="role" value="creator"><span><b>Créateur</b><small>Créer et gérer tes propres formations.</small></span></label></div></fieldset>'
-    +'<p class="auth-permanent-note"><b>À savoir :</b> tu pourras passer de consommateur à créateur dans Configuration. Ce changement est définitif : un compte créateur ne peut pas redevenir consommateur.</p>'
-    +'<button class="btn btn-black" type="submit">Enregistrer et entrer <i data-lucide="arrow-right"></i></button></form>'
+    +'<form class="auth-form onboarding-form" id="onboardingForm">'
+    +'<section class="onboarding-step" data-onboarding-step="1"><p class="onboarding-kicker">QUESTION 1</p><label for="discovery">Où as-tu découvert BLOXFORGE ?<select id="discovery" name="discovery" required><option value="">Choisir une réponse…</option><option value="youtube"'+selected('discovery','youtube')+'>YouTube</option><option value="social"'+selected('discovery','social')+'>Réseaux sociaux</option><option value="friend"'+selected('discovery','friend')+'>Recommandation d’un proche</option><option value="search"'+selected('discovery','search')+'>Moteur de recherche</option><option value="roblox"'+selected('discovery','roblox')+'>Roblox</option><option value="other"'+selected('discovery','other')+'>Autre</option></select></label>'
+    +'<label class="onboarding-attribution" for="attributionName">Qui nous a fait connaître ?<input id="attributionName" name="attributionName" type="text" minlength="2" maxlength="120" value="'+value('attributionName')+'" placeholder="Ex. Nom de la chaîne YouTube"><span class="creator-help">Obligatoire pour YouTube, les réseaux sociaux et une recommandation.</span></label></section>'
+    +'<section class="onboarding-step" data-onboarding-step="2" hidden><p class="onboarding-kicker">QUESTION 2</p><label for="whyBloxforge">Pourquoi as-tu choisi BLOXFORGE ?<textarea id="whyBloxforge" name="whyBloxforge" rows="4" minlength="3" maxlength="500" placeholder="Dis-nous ce que tu aimerais apprendre ou créer…" required>'+value('whyBloxforge')+'</textarea></label></section>'
+    +'<section class="onboarding-step" data-onboarding-step="3" hidden><p class="onboarding-kicker">QUESTION 3</p><fieldset class="onboarding-role"><legend>Tu veux utiliser BLOXFORGE comme…</legend>'
+    +'<div class="auth-choices"><label class="auth-choice"><input type="radio" name="role" value="consumer" required'+checked('role','consumer')+'><span><b>Consommateur</b><small>Découvrir et suivre des formations.</small></span></label>'
+    +'<label class="auth-choice"><input type="radio" name="role" value="creator"'+checked('role','creator')+'><span><b>Créateur</b><small>Créer et gérer tes propres formations.</small></span></label></div></fieldset>'
+    +'<p class="auth-permanent-note"><b>Information importante :</b> le passage au statut de créateur est définitif. Un compte créateur ne peut pas redevenir consommateur.</p></section>'
+    +'<div class="onboarding-actions"><button class="btn btn-ghost" type="button" data-onboarding-back>Retour</button><button class="btn btn-black" type="button" data-onboarding-next>Continuer <i data-lucide="arrow-right"></i></button><button class="btn btn-black" type="submit" data-onboarding-submit hidden>Enregistrer et entrer <i data-lucide="arrow-right"></i></button></div></form>'
     +'<p class="auth-local-note">Prototype local de test : n’indique pas de renseignements confidentiels.</p>'
     +'</div></section>';
   const discoverySelect=authRoot.querySelector('#discovery'), attributionInput=authRoot.querySelector('#attributionName');
-  if(discoverySelect&&attributionInput){const updateAttribution=()=>{attributionInput.required=['youtube','social','friend'].includes(discoverySelect.value);};discoverySelect.addEventListener('change',updateAttribution);updateAttribution();}
+  const form=authRoot.querySelector('#onboardingForm');
+  let step=1;
+  const syncStep=()=>{
+    form.querySelectorAll('[data-onboarding-step]').forEach(panel=>{panel.hidden=Number(panel.dataset.onboardingStep)!==step;});
+    authRoot.querySelector('#onboardingProgress').textContent='Étape '+step+' sur 3';
+    authRoot.querySelector('#onboardingProgressValue').style.width=(step/3*100)+'%';
+    form.querySelector('[data-onboarding-back]').hidden=step===1;
+    form.querySelector('[data-onboarding-next]').hidden=step===3;
+    form.querySelector('[data-onboarding-submit]').hidden=step!==3;
+    const focusTarget=form.querySelector('[data-onboarding-step="'+step+'"] select, [data-onboarding-step="'+step+'"] textarea, [data-onboarding-step="'+step+'"] input');
+    if(focusTarget)focusTarget.focus();
+  };
+  const updateAttribution=()=>{attributionInput.required=['youtube','social','friend'].includes(discoverySelect.value);};
+  const validStep=()=>{
+    const controls=[...form.querySelectorAll('[data-onboarding-step="'+step+'"] input, [data-onboarding-step="'+step+'"] select, [data-onboarding-step="'+step+'"] textarea')];
+    return controls.every(control=>{
+      const valid=control.checkValidity();
+      if(!valid)control.reportValidity();
+      return valid;
+    });
+  };
+  if(discoverySelect&&attributionInput){discoverySelect.addEventListener('change',updateAttribution);updateAttribution();}
+  form.querySelector('[data-onboarding-next]').addEventListener('click',()=>{if(validStep()){step+=1;syncStep();}});
+  form.querySelector('[data-onboarding-back]').addEventListener('click',()=>{step-=1;syncStep();});
+  form.addEventListener('submit',event=>{if(step<3){event.preventDefault();event.stopPropagation();if(validStep()){step+=1;syncStep();}}});
+  syncStep();
   refreshIcons();
 }
 
@@ -1239,6 +1268,7 @@ async function initializeAuthentication(){
   });
   authRoot.addEventListener('submit',async event=>{
     const form=event.target;
+    let onboardingDraft=null;
     event.preventDefault();
     const submit=form.querySelector('[type="submit"]');
     if(submit)submit.disabled=true;
@@ -1255,16 +1285,17 @@ async function initializeAuthentication(){
         }
       }else if(form.id==='onboardingForm'){
         const data=new FormData(form);
-        const result=await BloxforgeAuth.completeOnboarding({
+        onboardingDraft={
           discovery:String(data.get('discovery')||''),
           attributionName:String(data.get('attributionName')||''),
           whyBloxforge:String(data.get('whyBloxforge')||''),
           role:String(data.get('role')||'')
-        });
+        };
+        const result=await BloxforgeAuth.completeOnboarding(onboardingDraft);
         await enterApplication(result.user);
       }
     }catch(error){
-      if(form.id==='onboardingForm')renderOnboarding(error.message||'Vérifiez vos réponses.');
+      if(form.id==='onboardingForm')renderOnboarding(error.message||'Vérifiez vos réponses.',onboardingDraft||{});
       else renderAuthScreen(form.querySelector('#authName')?'register':'login',error.message||'Impossible de traiter la demande.');
     }
   });

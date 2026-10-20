@@ -493,8 +493,9 @@ function createAppServer(options = {}) {
 
 if (require.main === module) {
   const app = createAppServer();
-  app.server.listen(app.port, '127.0.0.1', () => {
-    console.log('BLOXFORGE local: http://127.0.0.1:' + app.port);
+  const host = process.env.BLOXFORGE_HOST || '127.0.0.1';
+  app.server.listen(app.port, host, () => {
+    console.log('BLOXFORGE local: http://' + host + ':' + app.port);
     console.log('Comptes de test locaux uniquement. N’utilisez pas de vrais mots de passe ou données sensibles.');
   });
   app.server.on('error', error => {

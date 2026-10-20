@@ -40,6 +40,21 @@
 .auth-choice input{accent-color:var(--blue);margin-top:4px}
 .auth-choice b{display:block;font-size:13px;color:var(--ink)}
 .auth-choice small{display:block;margin-top:3px;color:var(--muted);font-size:11px;line-height:1.45}
+.onboarding-form{min-height:292px;display:flex;flex-direction:column;justify-content:center;text-align:center}
+.onboarding-step{display:grid;gap:18px;width:min(100%,420px);margin-inline:auto;text-align:left}
+.onboarding-step>label{gap:10px;text-align:center;font-size:17px;line-height:1.35}
+.onboarding-step select,.onboarding-step input,.onboarding-step textarea{text-align:left}
+.onboarding-step textarea{min-height:116px}
+.onboarding-kicker{margin:0;color:var(--blue);font:700 10px var(--mono);letter-spacing:.12em;text-align:center}
+.onboarding-progress{display:grid;gap:8px;margin:12px auto 22px;width:min(100%,420px);color:var(--muted);font:600 11px var(--mono);text-align:center}
+.onboarding-progress-track{height:5px;border-radius:999px;background:var(--hair)}
+.onboarding-progress-track i{display:block;width:33.333%;height:100%;border-radius:inherit;background:var(--blue);transition:width .2s ease}
+.onboarding-attribution{display:grid;gap:6px!important;font-size:12px!important;text-align:left!important}
+.onboarding-attribution .creator-help{text-align:left}
+.onboarding-role{display:grid;gap:12px;margin:0;border:0;padding:0}
+.onboarding-role legend{width:100%;padding:0;color:var(--ink);font-size:17px;font-weight:700;line-height:1.35;text-align:center}
+.onboarding-actions{display:flex;justify-content:center;gap:10px;margin-top:26px}
+.onboarding-actions .btn{min-width:130px}
 .auth-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-top:4px}
 .account-tools{display:flex;align-items:center;gap:8px;min-width:0}
 .account-name{max-width:155px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:600;color:var(--ink)}
@@ -563,6 +578,8 @@ footer b{color:var(--muted)}
   .eval-wrap{padding:36px 16px 80px}
   .gk{display:none}
   .gt-vig{height:150px}
+  .onboarding-form{min-height:320px}
+  .onboarding-actions{flex-wrap:wrap}
 }
 @media(max-width:420px){
   .logo{font-size:18px}
@@ -570,6 +587,8 @@ footer b{color:var(--muted)}
   .save-ind{display:none}
   .catalog-tools{grid-template-columns:1fr}
   .catalog-tools label:first-child{grid-column:auto}
+  .auth-choices{grid-template-columns:1fr}
+  .onboarding-actions .btn{width:100%}
 }
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
