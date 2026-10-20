@@ -1,0 +1,33 @@
+# COPILOT AGENT — IMPLEMENTACIÓN DEL MARKETPLACE EN EL PROYECTO LOCAL
+
+Eres el ingeniero principal de BLOXFORGE. TU ÚNICA FUENTE DE ARCHIVOS ES LA CARPETA ABIERTA EN VS CODE Y LA CARPETA ADJUNTA `BLOXFORGE_COPILOT_KIT`. NO presupongas que tienes acceso a otros repositorios o documentación. Usa la documentación de este kit, no enlaces externos, para implementar.
+
+## OBJETIVO
+Convertir la ACADEMIA ORIGINAL del proyecto abierto, con su diseño francés, Kubo, cursos, misiones, evaluaciones, XP y progreso, en una academia/micro-marketplace de formaciones gratuitas con usuarios reales y creadores aprobados. Prepara la monetización más adelante, sin activarla. Debes CONSERVAR las funcionalidades originales, la identidad visual, los contenidos e imágenes. Nada de recrear otra web.
+
+## COMPROBACIONES INICIALES (sin preguntarme salvo bloqueo real)
+1. Inventaría `index.html`, `script.js`/`scripts.js`, `style.css`, `auth-client.js`, `server.js`, `package.json`, assets y tests, usando LOS NOMBRES QUE REALMENTE EXISTAN. No presumas que son idénticos a ejemplos. Haz copia de seguridad local antes de editar.
+2. Identifica cómo funciona el login actual. En la captura decía `Prototype local`; eso es una cuenta simulada. No presentes esa autenticación como real.
+3. Comprueba `git status`, `git remote -v` y `gh auth status`. No sustituyas el repositorio existente ni subas secretos. No hagas push a main ni publiques sin autorización.
+4. Leer `BLOXFORGE_COPILOT_KIT/INICIO_AQUI.md`, `supabase/migrations/20261018_01_marketplace_free.sql`, `docs/RLS_TEST_MATRIX.md` y `docs/ESTADO_Y_BLOQUEOS.md`.
+5. Localiza el proyecto correcto en Supabase a través de sesión oficial autenticada, `supabase projects list` o dashboard. La organización se llama `blox-forge's Org` (ID de ORGANIZACIÓN: `zwiwvtqcpckuashtaajm`, **NO ES PROJECT REF**). NO uses `nybpsknmavsusmesjsuz` ni `grtqjlkcjswmlqkhrzcr` (son de ADRS). No inventes el project ref.
+
+## INTEGRACIÓN Y SEGURIDAD
+6. Audita tablas/migraciones/Auth/Storage del proyecto correcto en MODO LECTURA. Confirma la identidad con el propietario de la organización, porque no se puede inferir de una invitación solamente.
+7. Prepara una migración adaptada al esquema real, basada en el borrador de 11 tablas del kit. NO ejecutes automáticamente un SQL que cree objetos ya existentes; compara tablas y haz respaldo antes de cualquier migración. Pruébala primero en entorno dedicado de desarrollo. Mantén RLS/grants de mínimo privilegio.
+8. Implementa Supabase Auth real (email/password, confirmación email según configuración, login, cierre y recuperación) sobre la interfaz EXISTENTE. Sustituye de modo controlado el prototipo local, sin eliminar las pantallas. El adaptador `examples/marketplace-api.example.js` y clientes de ejemplo son REFERENCIAS: intégralos según el stack local, no los copies a ciegas.
+9. Añade perfiles, solicitud de creador, revisión humana (solo mediante endpoint admin autenticado con rol protegido) y catálogo de cursos GRATUITOS. Un creador pendiente no puede autopromocionarse ni publicar. La publicación y el registro de auditoría no pueden ser mutados directamente por el browser.
+10. Preserva progreso local y ofrece migración voluntaria, sin borrarlo ni sobrescribir progreso de una cuenta existente. El progreso de usuario no debe conceder XP o certificaciones confiables sin lógica de validación.
+11. **Nunca** incluyas `sb_secret_`, `service_role`, `sk_test_`, `sk_live_`, tokens o credenciales privadas en la web o Git. Usa solo URL + `sb_publishable_` pública en browser; todo permiso se confirma con RLS. La configuración real se carga de forma compatible con el servidor local; no inventes `.env` que el navegador no lea.
+12. Archivos premium: NO almacenar el contenido pagado completo en JS público, HTML público ni buckets públicos. Las futuras compras requieren servidor + Stripe Connect verificado + webhooks idempotentes. NO activar Stripe Live.
+
+## PRUEBAS
+13. Ejecuta las pruebas preexistentes y las de este kit (`node --test BLOXFORGE_COPILOT_KIT/tests/static.test.cjs` o adapta rutas). Añade tests reales de RLS para anónimo, alumno A/B, creador pendiente/aprobado y moderador con credenciales de prueba. Prueba que un usuario no puede autoconcederse cursos premium o cambiar estados.
+14. Valida formulario de login real, reconexión después de recargar, cursos, Kubo y ejercicios. Si no puedes probar Supabase con sesión real, entrega el bloqueo; NO afirmes que está conectado.
+15. No mezcles datos de ADRS ni crees nuevas cuentas/costes/servicios sin autorización. Prioriza cambios reversibles y una entrega de primera fase gratuita funcional.
+
+## DECISIÓN ANTE TU PREGUNTA DE CANÓNICO
+**Seleccionamos opción 1**: preservar las variantes y examinar su procedencia/paridad antes de escoger cuál es canónica. La CARPETA ABIERTA EN VS CODE es la que debes analizar primero. Nada de reemplazarla por un `index.html` de otro repositorio.
+
+## INFORME FINAL
+Resume: 1) código real encontrado, 2) project ref Supabase REAL o bloqueo, 3) tablas/RLS implementadas vs propuestas, 4) Auth real vs simulado, 5) tests PASADOS/NO PROBADOS, 6) archivos editados, 7) pasos humanos indispensables. Avanza sin pedir confirmación para tareas locales seguras, pero NO modifiques Supabase si no está verificado, sin migración validada y respaldo.

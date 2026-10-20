@@ -1,0 +1,9 @@
+# Local account prototype
+
+Run `npm start` and open `http://127.0.0.1:4173`. This server binds only to the local loopback interface. It is a test prototype, not a production identity service: do not use real passwords, payment details, private information, or expose the server to a network.
+
+The prototype uses a single browser-facing `BloxforgeAuth` contract in `auth-client.js`. Its methods cover session, account, onboarding, one-way role upgrade, and courses. The local HTTP implementation is in `server.js`; account/course persistence is isolated behind a repository interface. To adopt Supabase, replace the local auth/repository implementation with a Supabase-backed adapter and enforce row-level security policies for user-owned data. Keep the Supabase service-role key server-side; only a publishable/anon key may be used in a browser, with RLS enabled.
+
+Local accounts are stored in ignored `local-data/database.json`; passwords use salted scrypt hashes, but names, e-mail addresses, onboarding answers, and courses are not encrypted at rest. File permission modes are best-effort and platform-dependent. Session cookies are HttpOnly and SameSite=Strict, but local HTTP cannot provide the Secure cookie attribute or production-grade session durability. Restarting the server expires all active sessions. This local prototype does not include email verification, password reset, MFA, account deletion, or production abuse controls.
+
+During onboarding, each account records how the user found BLOXFORGE, why they joined, and whether they start as a consumer or creator. A consumer can permanently upgrade to creator once; a creator cannot downgrade. The server enforces that transition and creator-only course management. Course listings are readable by signed-in users; edits and deletion are restricted to the owning creator.
