@@ -358,14 +358,8 @@ function buildHome(){
   +'</div></section>'
   +'<section class="creator-section"><div class="wrap"><div class="creator-heading"><div><div class="lab">'+(canCreateCourses?'VOTRE ESPACE CRÉATEUR':'DÉCOUVRIR')+'</div><h2 class="display">'+(canCreateCourses?'Mes formations.':'Formations de la communauté.')+'</h2><p>'+(canCreateCourses?'Créez vos propres cours, organisez le programme et fixez un prix.':'Parcourez les formations proposées par les créateurs BLOXFORGE.')+'</p></div>'+(canCreateCourses?'<button class="btn btn-black" id="newCourseBtn" type="button"><i data-lucide="plus"></i>Créer une formation</button>':'')+'</div>'
   +'<div class="catalog-tools"><label for="courseSearch">Rechercher une formation</label><input id="courseSearch" type="search" placeholder="Titre, sujet, créateur…" autocomplete="off"><button class="ex-reset" id="clearSearch" type="button">Effacer</button><span id="catalogCount" aria-live="polite"></span></div>'
-  +(canCreateCourses?'<div class="creator-form-wrap card" id="courseFormWrap" hidden><form id="courseForm" class="creator-form">'
-  +'<input id="courseId" type="hidden"><div class="creator-form-title"><div><div class="lab">NOUVELLE FORMATION</div><h3 id="courseFormTitle">Créer votre cours</h3></div><button class="creator-close" id="cancelCourseBtn" type="button" aria-label="Fermer le formulaire">×</button></div>'
-  +'<label for="courseTitle">Nom du cours<input id="courseTitle" name="title" type="text" maxlength="80" placeholder="Ex. Créer son premier obby" required></label>'
-  +'<label for="courseDescription">Description<textarea id="courseDescription" name="description" maxlength="360" rows="3" placeholder="À qui s’adresse ce cours et qu’allez-vous apprendre ?" required></textarea></label>'
-  +'<div class="creator-form-row"><label for="coursePrice">Prix en euros<input id="coursePrice" name="price" type="number" min="0" max="10000" step="0.01" value="0" required><span class="creator-help">0 € = formation gratuite.</span></label>'
-  +'<label for="courseLessons">Programme du cours<textarea id="courseLessons" name="lessons" rows="5" placeholder="Une étape par ligne&#10;Ex. Découvrir Roblox Studio&#10;Créer son premier niveau" required></textarea><span class="creator-help">Ajoutez une étape par ligne (maximum 30).</span></label></div>'
-  +'<p class="creator-notice"><i data-lucide="info"></i>La formation et son prix sont enregistrés sur le serveur local. Le paiement en ligne n’est pas activé.</p>'
-  +'<div class="creator-form-actions"><button class="ex-reset" id="cancelCourseBtnBottom" type="button">Annuler</button><button class="btn btn-black" type="submit"><i data-lucide="save"></i>Enregistrer la formation</button></div></form></div>':'')
+  +(canCreateCourses?'<div class="creator-form-wrap card" id="courseFormWrap" hidden><form id="courseForm" class="creator-form course-studio-form">'
+  +'<input id="courseId" type="hidden"><div id="courseStudioMount"></div></form></div>':'')
   +'<div class="creator-grid" id="creatorGrid"'+(customCourses.length?'':' hidden')+'>'+courseCards+'</div>'
   +(customCourses.length?'':emptyCourses)
   +'<p class="empty-catalog" id="emptyCatalog" hidden>Aucune formation ne correspond à ta recherche. Essaie un autre mot-clé.</p>'
@@ -391,96 +385,216 @@ function buildHome(){
 function setupCourseCreator(v){
   const form=v.querySelector('#courseForm'),wrap=v.querySelector('#courseFormWrap');
   if(!form||!wrap)return;
-  let editorDocument={modules:[]}, editorVersion=1, editorTimer=0;
-  const editorMarkup='<section class="bf-editor"><div class="bf-editor-head"><h4>Programme de la formation</h4><span id="bfSaveState" aria-live="polite">Enregistré</span><button type="button" id="bfAddModule">Ajouter un module</button><button type="button" id="bfPreview">Aperçu</button></div><div class="bf-editor-grid"><nav id="bfOutline" aria-label="Modules et leçons"></nav><section id="bfLessonEditor"><p>Sélectionnez une leçon ou créez un module.</p></section></div><div id="bfPreviewPane" hidden></div></section>';
-  const mountEditor=()=>{if(!form.querySelector('.bf-editor'))form.insertAdjacentHTML('beforeend',editorMarkup);};
-  const saveState=label=>{const el=v.querySelector('#bfSaveState');if(el)el.textContent=label;};
-  const renderEditor=()=>{const outline=v.querySelector('#bfOutline'),area=v.querySelector('#bfLessonEditor');if(!outline||!area)return;
-    outline.innerHTML=editorDocument.modules.map((m,mi)=>'<div class="bf-module"><b>'+esc(m.title)+'</b><button type="button" data-move-module="'+mi+'" aria-label="Monter le module">↑</button><button type="button" data-rename-module="'+mi+'">Renommer</button><button type="button" data-del-module="'+mi+'">Supprimer</button>'+m.lessons.map((l,li)=>'<div class="bf-lesson"><button type="button" data-select-lesson="'+mi+':'+li+'">'+esc(l.title)+'</button><button type="button" data-move-lesson="'+mi+':'+li+'">↑</button><button type="button" data-rename-lesson="'+mi+':'+li+'">Renommer</button><button type="button" data-del-lesson="'+mi+':'+li+'">×</button></div>').join('')+'<button type="button" data-add-lesson="'+mi+'">Ajouter une leçon</button></div>').join('');
-    area.innerHTML='<p>Choisissez une leçon pour modifier ses blocs de texte et de code.</p>';};
-  const scheduleSave=()=>{saveState('Modifications non enregistrées');clearTimeout(editorTimer);editorTimer=setTimeout(async()=>{const id=v.querySelector('#courseId').value;if(!id){saveState('Enregistrez d’abord les informations du cours');return;}saveState('Enregistrement…');try{const current=customCourses.find(c=>c.id===id);const fields={title:titleInput.value.trim(),description:v.querySelector('#courseDescription').value.trim(),price:Number(v.querySelector('#coursePrice').value),lessons:editorDocument.modules.flatMap(m=>m.lessons.map(l=>l.title)),document:editorDocument,expectedVersion:editorVersion};const result=await BloxforgeAuth.updateCourse(id,fields);editorVersion=result.course.version;await refreshCourses();saveState('Enregistré');}catch(error){saveState('Erreur d’enregistrement');toast(error.message||'Erreur d’enregistrement. Vos changements restent dans l’éditeur.','triangle-alert');}},600);};
-  const titleInput=v.querySelector('#courseTitle');
+  const makeId=prefix=>prefix+'-'+crypto.randomUUID();
+  let editorDocument={modules:[]},editorVersion=1,editorTimer=0,activeLesson=null,activeBlock=null,activeTab='info',saveChain=Promise.resolve();
+  const blockLabels={text:'Texte',code:'Code Luau',challenge:'Défi',quiz:'Quiz'};
+  const blockIcons={text:'align-left',code:'code-2',challenge:'flag',quiz:'circle-help'};
+  form.querySelector('#courseStudioMount').innerHTML=`
+    <section class="bf-editor" aria-label="Studio de création de formation">
+      <section class="studio-template-picker" id="bfTemplatePicker" hidden>
+        <div class="studio-template-head"><div><span class="lab">NOUVELLE FORMATION</span><h3>Choisissez votre point de départ</h3><p>Chaque option crée un brouillon modifiable associé à votre compte.</p></div><button class="creator-close" type="button" data-close-studio aria-label="Fermer">×</button></div>
+        <div class="studio-template-grid">
+          <button type="button" data-course-template="blank"><i data-lucide="file-plus-2"></i><b>Partir de zéro</b><span>Une structure simple, prête à personnaliser.</span></button>
+          <button type="button" data-course-template="tower"><i data-lucide="shield"></i><b>Tower Defense</b><span>Modules, explication et premier script Luau.</span></button>
+          <button type="button" data-course-template="rpg"><i data-lucide="swords"></i><b>RPG / Survie</b><span>Progression guidée avec un premier défi.</span></button>
+          <button type="button" data-course-template="model"><i data-lucide="box"></i><b>Modélisation 3D</b><span>Parcours visuel pour construire un objet.</span></button>
+        </div>
+      </section>
+      <div id="bfStudioApp">
+        <header class="bf-editor-head">
+          <div><span class="lab">BLOXFORGE COURSE STUDIO</span><h3 id="courseFormTitle">Modifier la formation</h3></div>
+          <div class="studio-head-actions"><span class="studio-save-state" id="bfSaveState" aria-live="polite"><i data-lucide="cloud-check"></i><span>Enregistré</span></span><button class="creator-close" type="button" data-close-studio aria-label="Fermer le studio">×</button></div>
+        </header>
+        <nav class="studio-tabs" aria-label="Étapes de création" role="tablist">
+          <button type="button" data-studio-tab="info" role="tab"><span>1</span>Informations</button>
+          <button type="button" data-studio-tab="build" role="tab"><span>2</span>Construire</button>
+          <button type="button" data-studio-tab="preview" role="tab"><span>3</span>Aperçu élève</button>
+          <button type="button" data-studio-tab="checks" role="tab"><span>4</span>Vérifications</button>
+          <button type="button" data-studio-tab="json" role="tab"><span>5</span>Données</button>
+        </nav>
+        <div class="studio-tab-panels">
+          <section class="studio-panel studio-info-panel" data-studio-panel="info" role="tabpanel">
+            <div class="studio-panel-intro"><span class="lab">ÉTAPE 1</span><h4>Présentez votre formation</h4><p>Ces informations aident l’élève à comprendre le résultat qu’il va obtenir.</p></div>
+            <div class="studio-info-grid">
+              <label for="courseTitle">Nom de la formation<input id="courseTitle" name="title" type="text" maxlength="80" placeholder="Ex. Créer son premier obby" required></label>
+              <label for="coursePrice">Prix en euros<input id="coursePrice" name="price" type="number" min="0" max="10000" step="0.01" value="0" required><span class="creator-help">Indiquez 0 pour une formation gratuite.</span></label>
+              <label class="studio-info-wide" for="courseDescription">Promesse et description<textarea id="courseDescription" name="description" maxlength="360" rows="5" placeholder="Expliquez à qui s’adresse le cours et ce que l’élève saura créer." required></textarea><span class="creator-help"><span id="courseDescriptionCount">0</span> / 360 caractères</span></label>
+            </div>
+            <div class="studio-panel-next"><button class="btn btn-black" type="button" data-studio-tab="build">Construire le programme <i data-lucide="arrow-right"></i></button></div>
+          </section>
+          <section class="studio-panel" data-studio-panel="build" role="tabpanel" hidden>
+            <div class="studio-mobile-panes" aria-label="Zones de l’éditeur"><button type="button" data-mobile-pane="outline">Structure</button><button type="button" data-mobile-pane="canvas">Contenu</button><button type="button" data-mobile-pane="inspector">Réglages</button></div>
+            <div class="bf-editor-grid" id="bfEditorGrid" data-mobile-active="canvas">
+              <aside class="studio-outline"><div class="studio-column-head"><div><span class="lab">STRUCTURE</span><h4>Modules et leçons</h4></div><button type="button" id="bfAddModule"><i data-lucide="plus"></i>Module</button></div><nav id="bfOutline" aria-label="Modules et leçons"></nav></aside>
+              <main class="studio-canvas"><div id="bfLessonEditor"></div></main>
+              <aside class="studio-inspector"><div class="studio-column-head"><div><span class="lab">RÉGLAGES</span><h4>Contenu sélectionné</h4></div></div><div id="bfInspector"></div></aside>
+            </div>
+          </section>
+          <section class="studio-panel" data-studio-panel="preview" role="tabpanel" hidden><div id="bfPreviewPane"></div></section>
+          <section class="studio-panel" data-studio-panel="checks" role="tabpanel" hidden><div id="bfChecksPane"></div></section>
+          <section class="studio-panel" data-studio-panel="json" role="tabpanel" hidden><div id="bfJsonPane"></div></section>
+        </div>
+        <footer class="studio-footer"><p><i data-lucide="shield-check"></i>Le brouillon reste privé jusqu’à une future validation.</p><div><button class="ex-reset" type="button" data-close-studio>Fermer</button><button class="btn btn-black" type="submit"><i data-lucide="save"></i>Enregistrer</button></div></footer>
+      </div>
+    </section>`;
+
+  const titleInput=v.querySelector('#courseTitle'),descriptionInput=v.querySelector('#courseDescription'),priceInput=v.querySelector('#coursePrice');
   const refreshCourses=async()=>{const result=await BloxforgeAuth.listCourses();customCourses=result.courses;};
-  const closeForm=()=>{
-    form.reset();
-    v.querySelector('#courseId').value='';
-    v.querySelector('#courseFormTitle').textContent='Créer votre cours';
-    wrap.hidden=true;
+  const saveState=(label,state='idle')=>{const el=v.querySelector('#bfSaveState');if(el){el.dataset.state=state;el.querySelector('span').textContent=label;}};
+  const syncPositions=()=>editorDocument.modules.forEach((module,mi)=>{module.position=mi;module.lessons.forEach((lesson,li)=>lesson.position=li);});
+  const lessonAt=()=>activeLesson?editorDocument.modules[activeLesson[0]]?.lessons[activeLesson[1]]:null;
+  const blockAt=()=>{const lesson=lessonAt();return lesson&&activeBlock!==null?lesson.blocks[activeBlock]:null;};
+  const lessonTitles=()=>editorDocument.modules.flatMap(module=>module.lessons.map(lesson=>lesson.title.trim())).filter(Boolean);
+  const currentFields=()=>{
+    const title=titleInput.value.trim(),description=descriptionInput.value.trim(),price=Number(priceInput.value),lessons=lessonTitles();
+    const quizzes=editorDocument.modules.flatMap(module=>module.lessons.flatMap(lesson=>lesson.blocks)).filter(block=>block.type==='quiz');
+    if(title.length<3||description.length<3||!Number.isFinite(price)||price<0||price>10000||!lessons.length||quizzes.some(block=>!block.question?.trim()||!Array.isArray(block.choices)||block.choices.length<2||block.choices.some(choice=>!choice.trim())))return null;
+    return {title:title.slice(0,80),description:description.slice(0,360),price:Math.round(price*100)/100,lessons,document:editorDocument,expectedVersion:editorVersion};
   };
-  const openForm=course=>{
-    mountEditor();
-    wrap.hidden=false;
-    if(course){
-      v.querySelector('#courseId').value=course.id;
-      titleInput.value=course.title;
-      v.querySelector('#courseDescription').value=course.description;
-      v.querySelector('#coursePrice').value=course.price;
-      v.querySelector('#courseLessons').value=course.lessons.join('\n');
-      editorDocument=course.document||{modules:[{id:'module-'+Date.now(),title:'Programme',description:'',position:0,lessons:course.lessons.map((title,i)=>({id:'lesson-'+Date.now()+'-'+i,title,position:i,type:'content',durationMinutes:0,blocks:[{id:'block-'+Date.now()+'-'+i,type:'text',content:title}]}))}]};editorVersion=course.version||1;renderEditor();
-      v.querySelector('#courseFormTitle').textContent='Modifier votre formation';
-    }else{
-      form.reset();
-      v.querySelector('#courseId').value='';
-      v.querySelector('#coursePrice').value='0';
-      editorDocument={modules:[]};editorVersion=1;renderEditor();
-      v.querySelector('#courseFormTitle').textContent='Créer votre cours';
-    }
-    wrap.hidden=false;
-    titleInput.focus();
-    wrap.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'});
+  const persistCourse=()=>{
+    saveChain=saveChain.then(async()=>{
+      const id=v.querySelector('#courseId').value,fields=currentFields();
+      if(!id||!fields){saveState('Complétez les informations et ajoutez une leçon','warning');return false;}
+      saveState('Enregistrement…','saving');
+      try{const result=await BloxforgeAuth.updateCourse(id,fields);editorVersion=result.course.version;await refreshCourses();saveState('Enregistré','saved');return true;}
+      catch(error){saveState('Erreur d’enregistrement','error');toast(error.message||'Vos changements restent visibles dans le studio.','triangle-alert');return false;}
+    });
+    return saveChain;
   };
-  v.querySelector('#newCourseBtn').addEventListener('click',async event=>{const button=event.currentTarget;if(button.disabled)return;button.disabled=true;try{const result=await BloxforgeAuth.createCourse({title:'Nouvelle formation',description:'Brouillon à compléter.',price:0,lessons:['Première leçon'],document:{modules:[]}});await refreshCourses();editorVersion=result.course.version||1;openForm(result.course);toast('Brouillon créé. Vous pouvez commencer.','check');}catch(error){button.disabled=false;toast(error.message||'Impossible de créer le brouillon. Réessayez.','triangle-alert');}});
-  v.addEventListener('click',async e=>{
-    const makeId=prefix=>prefix+'-'+crypto.randomUUID();
-    if(e.target.closest('#bfAddModule')){editorDocument.modules.push({id:makeId('module'),title:'Nouveau module',description:'',position:editorDocument.modules.length,lessons:[]});renderEditor();scheduleSave();return;}
-    if(e.target.closest('[data-rename-module]')){const i=+e.target.closest('[data-rename-module]').dataset.renameModule;const name=prompt('Nom du module',editorDocument.modules[i].title);if(name&&name.trim()){editorDocument.modules[i].title=name.trim();renderEditor();scheduleSave();}return;}
-    if(e.target.closest('[data-del-module]')){const i=+e.target.closest('[data-del-module]').dataset.delModule;if(confirm('Supprimer ce module et ses leçons ?')){editorDocument.modules.splice(i,1);renderEditor();scheduleSave();}return;}
-    if(e.target.closest('[data-move-module]')){const i=+e.target.closest('[data-move-module]').dataset.moveModule;if(i>0){[editorDocument.modules[i-1],editorDocument.modules[i]]=[editorDocument.modules[i],editorDocument.modules[i-1]];renderEditor();scheduleSave();}return;}
-    if(e.target.closest('[data-add-lesson]')){const i=+e.target.closest('[data-add-lesson]').dataset.addLesson,m=editorDocument.modules[i];m.lessons.push({id:makeId('lesson'),title:'Nouvelle leçon',position:m.lessons.length,type:'content',durationMinutes:0,blocks:[]});renderEditor();scheduleSave();return;}
-    if(e.target.closest('[data-del-lesson]')){const [mi,li]=e.target.closest('[data-del-lesson]').dataset.delLesson.split(':').map(Number);if(confirm('Supprimer cette leçon ?')){editorDocument.modules[mi].lessons.splice(li,1);renderEditor();scheduleSave();}return;}
-    if(e.target.closest('[data-rename-lesson]')){const [mi,li]=e.target.closest('[data-rename-lesson]').dataset.renameLesson.split(':').map(Number),lesson=editorDocument.modules[mi].lessons[li],name=prompt('Nom de la leçon',lesson.title);if(name&&name.trim()){lesson.title=name.trim();renderEditor();scheduleSave();}return;}
-    if(e.target.closest('[data-move-lesson]')){const [mi,li]=e.target.closest('[data-move-lesson]').dataset.moveLesson.split(':').map(Number),lessons=editorDocument.modules[mi].lessons;if(li>0){[lessons[li-1],lessons[li]]=[lessons[li],lessons[li-1]];renderEditor();scheduleSave();}return;}
-    if(e.target.closest('[data-select-lesson]')){const [mi,li]=e.target.closest('[data-select-lesson]').dataset.selectLesson.split(':').map(Number),lesson=editorDocument.modules[mi].lessons[li];const blockHtml=lesson.blocks.map((b,i)=>'<label>'+esc(b.type==='code'?'Code':'Texte')+'<textarea data-block="'+mi+':'+li+':'+i+'" rows="5">'+esc(b.content)+'</textarea><button type="button" data-del-block="'+mi+':'+li+':'+i+'">Supprimer</button></label>').join('');v.querySelector('#bfLessonEditor').innerHTML='<h4>'+esc(lesson.title)+'</h4><button type="button" data-add-block="'+mi+':'+li+':text">Ajouter du texte</button><button type="button" data-add-block="'+mi+':'+li+':code">Ajouter du code</button>'+blockHtml;return;}
-    if(e.target.closest('[data-add-block]')){const [mi,li,type]=e.target.closest('[data-add-block]').dataset.addBlock.split(':'),lesson=editorDocument.modules[+mi].lessons[+li];lesson.blocks.push({id:makeId('block'),type,content:''});const btn=v.querySelector('[data-select-lesson="'+mi+':'+li+'"]');if(btn)btn.click();scheduleSave();return;}
-    if(e.target.closest('[data-del-block]')){const [mi,li,bi]=e.target.closest('[data-del-block]').dataset.delBlock.split(':').map(Number);editorDocument.modules[mi].lessons[li].blocks.splice(bi,1);v.querySelector('[data-select-lesson="'+mi+':'+li+'"]').click();scheduleSave();return;}
-    if(e.target.closest('#bfPreview')){const p=v.querySelector('#bfPreviewPane');p.hidden=!p.hidden;p.innerHTML='<h3>'+esc(titleInput.value)+'</h3>'+editorDocument.modules.map(m=>'<h4>'+esc(m.title)+'</h4>'+m.lessons.map(l=>'<h5>'+esc(l.title)+'</h5>'+l.blocks.map(b=>b.type==='code'?'<pre><code>'+esc(b.content)+'</code></pre>':'<p>'+esc(b.content).replace(/\n/g,'<br>')+'</p>').join('')).join('')).join('');return;}
-    if(e.target.closest('[data-open-creator]')){openForm(null);return;}
-    if(e.target.closest('#cancelCourseBtn,#cancelCourseBtnBottom')){closeForm();return;}
-    const edit=e.target.closest('[data-edit-course]');
-    if(edit){
-      const course=customCourses.find(item=>item.id===edit.dataset.editCourse);
-      if(!course){toast('Cette formation est introuvable.','triangle-alert');return;}
-      openForm(course);return;
-    }
-    const remove=e.target.closest('[data-delete-course]');
-    if(remove){
-      const course=customCourses.find(item=>item.id===remove.dataset.deleteCourse);
-      if(!course){toast('Cette formation est introuvable.','triangle-alert');return;}
-      if(!confirm('Supprimer la formation « '+course.title+' » ? Cette action est définitive.'))return;
-      try{await BloxforgeAuth.deleteCourse(course.id);await refreshCourses();buildHome();toast('Formation supprimée.','trash-2');}
-      catch(error){toast(error.message||'Impossible de supprimer cette formation.','triangle-alert');}
-    }
+  const scheduleSave=()=>{saveState('Modifications non enregistrées','dirty');clearTimeout(editorTimer);editorTimer=setTimeout(persistCourse,700);};
+  const buttonIcon=(icon,label,attrs,disabled=false)=>'<button type="button" class="studio-icon-btn" '+attrs+(disabled?' disabled':'')+' aria-label="'+escAttr(label)+'"><i data-lucide="'+icon+'"></i></button>';
+
+  function renderOutline(){
+    const outline=v.querySelector('#bfOutline');
+    if(!editorDocument.modules.length){outline.innerHTML='<div class="studio-empty"><i data-lucide="layers-3"></i><b>Aucun module</b><p>Commencez par créer le premier chapitre du cours.</p><button type="button" data-add-first-module>Ajouter un module</button></div>';refreshIcons();return;}
+    outline.innerHTML=editorDocument.modules.map((module,mi)=>`<section class="bf-module">
+      <header><button class="bf-module-title" type="button" data-toggle-module="${mi}" aria-expanded="true"><i data-lucide="chevron-down"></i><span><small>MODULE ${mi+1}</small><b>${esc(module.title)}</b></span></button><div class="studio-row-actions">${buttonIcon('arrow-up','Monter le module',`data-move-module="${mi}:-1"`,mi===0)}${buttonIcon('arrow-down','Descendre le module',`data-move-module="${mi}:1"`,mi===editorDocument.modules.length-1)}${buttonIcon('pencil','Renommer le module',`data-rename-module="${mi}"`)}${buttonIcon('trash-2','Supprimer le module',`data-del-module="${mi}"`)}</div></header>
+      <div class="bf-module-lessons">${module.lessons.map((lesson,li)=>`<div class="bf-lesson-row"><button type="button" class="bf-lesson${activeLesson&&activeLesson[0]===mi&&activeLesson[1]===li?' is-active':''}" data-select-lesson="${mi}:${li}"><span>${li+1}</span><b>${esc(lesson.title)}</b><small>${lesson.blocks.length} bloc${lesson.blocks.length===1?'':'s'}</small></button><div class="bf-lesson-actions">${buttonIcon('arrow-up','Monter la leçon',`data-move-lesson="${mi}:${li}:-1"`,li===0)}${buttonIcon('arrow-down','Descendre la leçon',`data-move-lesson="${mi}:${li}:1"`,li===module.lessons.length-1)}${buttonIcon('pencil','Renommer la leçon',`data-rename-lesson="${mi}:${li}"`)}${buttonIcon('trash-2','Supprimer la leçon',`data-del-lesson="${mi}:${li}"`)}</div></div>`).join('')}<button class="studio-add-row" type="button" data-add-lesson="${mi}"><i data-lucide="plus"></i>Ajouter une leçon</button></div>
+    </section>`).join('');
+    refreshIcons();
+  }
+
+  function renderCanvas(){
+    const area=v.querySelector('#bfLessonEditor'),lesson=lessonAt();
+    if(!lesson){area.innerHTML='<div class="studio-empty studio-empty-large"><i data-lucide="mouse-pointer-click"></i><b>Sélectionnez une leçon</b><p>Choisissez une leçon dans la structure pour construire son contenu.</p></div>';refreshIcons();return;}
+    const blocks=lesson.blocks.map((block,bi)=>{
+      const summary=block.type==='code'?`<pre><code>${esc(block.content||'-- Votre code Luau')}</code></pre>`:block.type==='quiz'?`<p>${esc(block.question||'Ajoutez la question du quiz.')}</p>`:block.type==='challenge'?`<p>${esc(block.objective||block.content||'Décrivez le défi proposé à l’élève.')}</p>`:`<p>${esc(block.content||'Ajoutez votre texte.').replace(/\n/g,'<br>')}</p>`;
+      return `<article class="studio-block${activeBlock===bi?' is-active':''}"><header><span><i data-lucide="${blockIcons[block.type]||'square'}"></i>${blockLabels[block.type]||block.type}</span><div>${buttonIcon('arrow-up','Monter le bloc',`data-move-block="${bi}:-1"`,bi===0)}${buttonIcon('arrow-down','Descendre le bloc',`data-move-block="${bi}:1"`,bi===lesson.blocks.length-1)}${buttonIcon('copy','Dupliquer le bloc',`data-duplicate-block="${bi}"`)}${buttonIcon('trash-2','Supprimer le bloc',`data-del-block="${bi}"`)}</div></header><button type="button" class="studio-block-body" data-select-block="${bi}">${summary}<small>Cliquer pour configurer</small></button></article>`;
+    }).join('');
+    area.innerHTML=`<div class="studio-canvas-head"><div><span class="lab">LEÇON ${activeLesson[1]+1}</span><h4>${esc(lesson.title)}</h4><p>${lesson.durationMinutes||0} min · ${lesson.blocks.length} bloc${lesson.blocks.length===1?'':'s'}</p></div><button type="button" class="ex-reset" data-studio-tab="preview"><i data-lucide="play"></i>Voir comme un élève</button></div>
+      <div class="studio-block-library"><span>Ajouter un bloc</span><div><button type="button" data-add-block="text"><i data-lucide="align-left"></i>Texte</button><button type="button" data-add-block="code"><i data-lucide="code-2"></i>Code</button><button type="button" data-add-block="challenge"><i data-lucide="flag"></i>Défi</button><button type="button" data-add-block="quiz"><i data-lucide="circle-help"></i>Quiz</button></div></div>
+      <div class="studio-blocks">${blocks||'<div class="studio-empty"><i data-lucide="blocks"></i><b>Cette leçon est vide</b><p>Ajoutez un bloc avec la bibliothèque ci-dessus.</p></div>'}</div>`;
+    refreshIcons();
+  }
+
+  function renderInspector(){
+    const host=v.querySelector('#bfInspector'),lesson=lessonAt(),block=blockAt();
+    if(!lesson){host.innerHTML='<div class="studio-empty"><p>Sélectionnez une leçon pour afficher ses réglages.</p></div>';return;}
+    if(!block){host.innerHTML=`<div class="studio-inspector-form"><span class="studio-inspector-type"><i data-lucide="file-text"></i>Réglages de la leçon</span><label>Titre<input data-lesson-field="title" maxlength="120" value="${escAttr(lesson.title)}"></label><label>Durée estimée<input data-lesson-field="durationMinutes" type="number" min="0" max="600" value="${lesson.durationMinutes||0}"></label><p class="creator-help">Sélectionnez un bloc au centre pour modifier son contenu.</p></div>`;refreshIcons();return;}
+    let fields='';
+    if(block.type==='text')fields=`<label>Texte<textarea data-block-field="content" rows="10" maxlength="20000" placeholder="Rédigez le contenu de la leçon…">${esc(block.content||'')}</textarea></label>`;
+    if(block.type==='code')fields=`<div class="studio-field-row"><label>Langage<select data-block-field="language"><option value="luau"${block.language==='luau'?' selected':''}>Luau</option><option value="javascript"${block.language==='javascript'?' selected':''}>JavaScript</option></select></label><label>Fichier<input data-block-field="filename" maxlength="120" value="${escAttr(block.filename||'')}" placeholder="Script.lua"></label></div><label>Code<textarea class="studio-code-input" data-block-field="content" rows="12" maxlength="20000" spellcheck="false">${esc(block.content||'')}</textarea></label><label>Explication<textarea data-block-field="explanation" rows="4" maxlength="1000">${esc(block.explanation||'')}</textarea></label>`;
+    if(block.type==='challenge')fields=`<label>Consigne<textarea data-block-field="content" rows="5" maxlength="20000">${esc(block.content||'')}</textarea></label><label>Objectif<input data-block-field="objective" maxlength="500" value="${escAttr(block.objective||'')}"></label><label>Livrable attendu<input data-block-field="deliverable" maxlength="500" value="${escAttr(block.deliverable||'')}"></label>`;
+    if(block.type==='quiz')fields=`<label>Question<textarea data-block-field="question" rows="4" maxlength="1000">${esc(block.question||'')}</textarea></label><label>Réponses possibles<textarea data-block-field="choices" rows="6" maxlength="2000" placeholder="Une réponse par ligne">${esc((block.choices||['Option A','Option B']).join('\n'))}</textarea></label><label>Bonne réponse<select data-block-field="correct">${(block.choices||['Option A','Option B']).map((choice,index)=>`<option value="${index}"${Number(block.correct)===index?' selected':''}>${index+1}. ${esc(choice)}</option>`).join('')}</select></label>`;
+    host.innerHTML=`<div class="studio-inspector-form"><span class="studio-inspector-type"><i data-lucide="${blockIcons[block.type]}"></i>${blockLabels[block.type]}</span>${fields}</div>`;refreshIcons();
+  }
+
+  function renderEditor(){
+    syncPositions();
+    if(activeLesson&&!editorDocument.modules[activeLesson[0]]?.lessons[activeLesson[1]]){activeLesson=null;activeBlock=null;}
+    if(!activeLesson){for(let mi=0;mi<editorDocument.modules.length;mi++){if(editorDocument.modules[mi].lessons.length){activeLesson=[mi,0];break;}}}
+    const lesson=lessonAt();if(lesson&&activeBlock!==null&&!lesson.blocks[activeBlock])activeBlock=null;
+    renderOutline();renderCanvas();renderInspector();
+  }
+
+  function previewBlock(block){
+    if(block.type==='code')return `<section class="student-content-block"><span class="lab">CODE · ${esc((block.filename||block.language||'LUAU').toUpperCase())}</span><pre><code>${esc(block.content||'')}</code></pre>${block.explanation?'<p>'+esc(block.explanation)+'</p>':''}</section>`;
+    if(block.type==='challenge')return `<section class="student-content-block student-challenge"><span class="lab">DÉFI</span><h5>${esc(block.objective||'À vous de jouer')}</h5><p>${esc(block.content||'')}</p>${block.deliverable?'<small>Livrable : '+esc(block.deliverable)+'</small>':''}</section>`;
+    if(block.type==='quiz')return `<section class="student-content-block student-quiz"><span class="lab">QUIZ</span><h5>${esc(block.question||'Question à compléter')}</h5><div>${(block.choices||[]).map((choice,index)=>'<label><input type="radio" disabled name="previewQuiz"> '+esc(choice)+'</label>').join('')}</div></section>`;
+    return `<section class="student-content-block"><span class="lab">LEÇON</span><p>${esc(block.content||'').replace(/\n/g,'<br>')}</p></section>`;
+  }
+  function renderPreview(){
+    const host=v.querySelector('#bfPreviewPane'),lesson=lessonAt()||editorDocument.modules.flatMap(module=>module.lessons)[0];
+    host.innerHTML=`<div class="studio-panel-intro"><span class="lab">APERÇU ÉLÈVE</span><h4>${esc(titleInput.value||'Votre formation')}</h4><p>${esc(descriptionInput.value||'Ajoutez une description dans Informations.')}</p></div>${lesson?`<article class="student-preview"><header><span>${esc(editorDocument.modules[activeLesson?.[0]]?.title||'Programme')}</span><h4>${esc(lesson.title)}</h4></header><div>${lesson.blocks.map(previewBlock).join('')||'<div class="studio-empty"><p>Cette leçon ne contient encore aucun bloc.</p></div>'}</div></article>`:'<div class="studio-empty studio-empty-large"><b>Aucune leçon à prévisualiser</b><p>Ajoutez une leçon dans Construire.</p></div>'}`;
+  }
+  function renderChecks(){
+    const modules=editorDocument.modules,lessons=lessonTitles(),blocks=modules.flatMap(module=>module.lessons.flatMap(lesson=>lesson.blocks));
+    const checks=[['Titre renseigné',titleInput.value.trim().length>=3],['Description renseignée',descriptionInput.value.trim().length>=3],['Au moins un module',modules.length>0],['Au moins une leçon',lessons.length>0],['Contenu dans les leçons',blocks.length>0],['Au moins une activité',blocks.some(block=>['quiz','challenge'].includes(block.type))]];
+    const ready=checks.every(item=>item[1]);
+    v.querySelector('#bfChecksPane').innerHTML=`<div class="studio-panel-intro"><span class="lab">AVANT LA RÉVISION</span><h4>${ready?'Votre brouillon est complet':'Quelques éléments restent à compléter'}</h4><p>Cette vérification contrôle la structure du cours avant une future validation humaine.</p></div><div class="studio-check-list">${checks.map(([label,ok])=>`<div class="${ok?'is-ok':''}"><i data-lucide="${ok?'check-circle-2':'circle'}"></i><span><b>${esc(label)}</b><small>${ok?'Terminé':'À compléter'}</small></span></div>`).join('')}</div><div class="studio-review-state ${ready?'is-ready':''}"><i data-lucide="${ready?'badge-check':'construction'}"></i><div><b>${ready?'Prêt pour la prochaine étape':'Brouillon en construction'}</b><p>${ready?'La soumission à une équipe de révision sera connectée ultérieurement.':'Revenez dans Informations ou Construire pour compléter le cours.'}</p></div></div>`;refreshIcons();
+  }
+  function renderJson(){
+    const data={course:{title:titleInput.value.trim(),description:descriptionInput.value.trim(),price:Number(priceInput.value)||0,status:'draft',modules:editorDocument.modules},revision:editorVersion};
+    v.querySelector('#bfJsonPane').innerHTML=`<div class="studio-panel-intro"><span class="lab">STRUCTURE ENREGISTRÉE</span><h4>Données de la formation</h4><p>Vue technique en lecture seule de la structure transmise au serveur.</p></div><pre class="studio-json"><code>${esc(JSON.stringify(data,null,2))}</code></pre>`;
+  }
+  function setTab(tab,focus=true){
+    activeTab=tab;
+    v.querySelectorAll('[data-studio-panel]').forEach(panel=>panel.hidden=panel.dataset.studioPanel!==tab);
+    v.querySelectorAll('.studio-tabs [data-studio-tab]').forEach(button=>{const on=button.dataset.studioTab===tab;button.classList.toggle('is-active',on);button.setAttribute('aria-selected',String(on));button.tabIndex=on?0:-1;});
+    if(tab==='build')renderEditor();if(tab==='preview')renderPreview();if(tab==='checks')renderChecks();if(tab==='json')renderJson();
+    if(focus)v.querySelector('[data-studio-panel="'+tab+'"]')?.focus({preventScroll:true});
+    refreshIcons();
+  }
+  function setMobilePane(pane){const grid=v.querySelector('#bfEditorGrid');grid.dataset.mobileActive=pane;v.querySelectorAll('[data-mobile-pane]').forEach(button=>button.classList.toggle('is-active',button.dataset.mobilePane===pane));}
+  function closeForm(){clearTimeout(editorTimer);form.reset();v.querySelector('#courseId').value='';wrap.hidden=true;}
+  function openForm(course){
+    if(!course)return;
+    v.querySelector('#bfTemplatePicker').hidden=true;v.querySelector('#bfStudioApp').hidden=false;wrap.hidden=false;
+    v.querySelector('#courseId').value=course.id;titleInput.value=course.title;descriptionInput.value=course.description;priceInput.value=course.price;
+    editorDocument=course.document||{modules:[{id:makeId('module'),title:'Programme',description:'',position:0,lessons:course.lessons.map((title,index)=>({id:makeId('lesson'),title,position:index,type:'content',durationMinutes:0,blocks:[{id:makeId('block'),type:'text',content:title}]}))}]};
+    editorVersion=course.version||1;activeLesson=null;activeBlock=null;v.querySelector('#courseFormTitle').textContent=course.title;v.querySelector('#courseDescriptionCount').textContent=descriptionInput.value.length;renderEditor();setTab('info',false);setMobilePane('canvas');saveState('Enregistré','saved');
+    wrap.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});titleInput.focus({preventScroll:true});refreshIcons();
+  }
+  function openTemplates(){wrap.hidden=false;v.querySelector('#bfTemplatePicker').hidden=false;v.querySelector('#bfStudioApp').hidden=true;wrap.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'});refreshIcons();}
+  function starterTemplate(key){
+    const block=(type,extra={})=>({id:makeId('block'),type,content:'',...extra});
+    const lesson=(title,blocks)=>({id:makeId('lesson'),title,position:0,type:'content',durationMinutes:10,blocks});
+    const module=(title,lessons)=>({id:makeId('module'),title,description:'',position:0,lessons});
+    if(key==='tower')return {title:'Créer un Tower Defense',description:'Apprendre les bases de Roblox Studio et Luau en construisant une première tour.',document:{modules:[module('Premiers pas',[lesson('Créer une tour',[block('text',{content:'Comprendre le rôle d’une tour et préparer la scène.'}),block('code',{content:'local tower = script.Parent\nlocal damage = 25\nprint(tower.Name)',language:'luau',filename:'TowerScript.lua',explanation:'Ce script récupère la tour et définit ses dégâts.'})])]),module('Pratique',[lesson('Défi et connaissances',[block('challenge',{content:'Créez une tour simple dans Roblox Studio.',objective:'Construire votre première tour',deliverable:'Une tour placée dans Workspace'}),block('quiz',{question:'À quoi sert une variable en Luau ?',choices:['Stocker une valeur','Créer un joueur','Fermer Studio'],correct:0})])])]}};
+    if(key==='rpg')return {title:'Créer un RPG de survie',description:'Construire une boucle de jeu simple avec ressources, danger et progression.',document:{modules:[module('Fondations',[lesson('La boucle de survie',[block('text',{content:'Définissez les ressources, les dangers et la condition de victoire.'}),block('challenge',{content:'Dessinez une boucle de jeu en trois étapes.',objective:'Clarifier la progression',deliverable:'Un schéma de boucle de jeu'})])]),module('Premiers systèmes',[lesson('Compteur de ressources',[block('code',{content:'local resources = 0\nresources += 1\nprint(resources)',language:'luau',filename:'Resources.lua',explanation:'Un compteur minimal pour commencer.'})])])]}};
+    if(key==='model')return {title:'Modéliser un objet 3D',description:'Apprendre à décomposer une forme et construire un objet lisible pour un jeu.',document:{modules:[module('Observer et construire',[lesson('Décomposer la forme',[block('text',{content:'Observez la silhouette, puis séparez-la en volumes simples.'}),block('challenge',{content:'Construisez une première version avec trois volumes maximum.',objective:'Créer une silhouette claire',deliverable:'Un modèle simple et lisible'})])])]}};
+    return {title:'Nouvelle formation',description:'Décrivez le résultat concret que l’élève obtiendra à la fin de cette formation.',document:{modules:[module('Introduction',[lesson('Bienvenue',[block('text',{content:'Présentez ici l’objectif de la formation.'})])])]}};
+  }
+  async function createFromTemplate(key,button){
+    button.disabled=true;const starter=starterTemplate(key),lessons=starter.document.modules.flatMap(module=>module.lessons.map(lesson=>lesson.title));
+    try{const result=await BloxforgeAuth.createCourse({...starter,price:0,lessons});await refreshCourses();openForm(result.course);toast('Brouillon créé. Vous pouvez commencer.','check');}
+    catch(error){button.disabled=false;toast(error.message||'Impossible de créer le brouillon.','triangle-alert');}
+  }
+
+  v.querySelector('#newCourseBtn').addEventListener('click',openTemplates);
+  v.addEventListener('click',async event=>{
+    const target=event.target;
+    const tabButton=target.closest('[data-studio-tab]');if(tabButton){setTab(tabButton.dataset.studioTab);return;}
+    const paneButton=target.closest('[data-mobile-pane]');if(paneButton){setMobilePane(paneButton.dataset.mobilePane);return;}
+    const templateButton=target.closest('[data-course-template]');if(templateButton){await createFromTemplate(templateButton.dataset.courseTemplate,templateButton);return;}
+    if(target.closest('[data-open-creator]')){openTemplates();return;}
+    if(target.closest('[data-close-studio]')){closeForm();return;}
+    const toggleModule=target.closest('[data-toggle-module]');if(toggleModule){const card=toggleModule.closest('.bf-module'),expanded=toggleModule.getAttribute('aria-expanded')==='true';toggleModule.setAttribute('aria-expanded',String(!expanded));card.classList.toggle('is-collapsed',expanded);return;}
+    if(target.closest('#bfAddModule,[data-add-first-module]')){editorDocument.modules.push({id:makeId('module'),title:'Nouveau module',description:'',position:editorDocument.modules.length,lessons:[]});activeLesson=null;activeBlock=null;renderEditor();scheduleSave();return;}
+    const moveModule=target.closest('[data-move-module]');if(moveModule){const [index,direction]=moveModule.dataset.moveModule.split(':').map(Number),next=index+direction;if(next>=0&&next<editorDocument.modules.length){[editorDocument.modules[index],editorDocument.modules[next]]=[editorDocument.modules[next],editorDocument.modules[index]];if(activeLesson?.[0]===index)activeLesson[0]=next;else if(activeLesson?.[0]===next)activeLesson[0]=index;renderEditor();scheduleSave();}return;}
+    const renameModule=target.closest('[data-rename-module]');if(renameModule){const index=Number(renameModule.dataset.renameModule),name=prompt('Nom du module',editorDocument.modules[index].title);if(name?.trim()){editorDocument.modules[index].title=name.trim().slice(0,120);renderEditor();scheduleSave();}return;}
+    const deleteModule=target.closest('[data-del-module]');if(deleteModule){const index=Number(deleteModule.dataset.delModule);if(confirm('Supprimer ce module et toutes ses leçons ?')){editorDocument.modules.splice(index,1);activeLesson=null;activeBlock=null;renderEditor();scheduleSave();}return;}
+    const addLesson=target.closest('[data-add-lesson]');if(addLesson){const mi=Number(addLesson.dataset.addLesson),module=editorDocument.modules[mi];module.lessons.push({id:makeId('lesson'),title:'Nouvelle leçon',position:module.lessons.length,type:'content',durationMinutes:10,blocks:[]});activeLesson=[mi,module.lessons.length-1];activeBlock=null;renderEditor();setMobilePane('canvas');scheduleSave();return;}
+    const moveLesson=target.closest('[data-move-lesson]');if(moveLesson){const [mi,index,direction]=moveLesson.dataset.moveLesson.split(':').map(Number),lessons=editorDocument.modules[mi].lessons,next=index+direction;if(next>=0&&next<lessons.length){[lessons[index],lessons[next]]=[lessons[next],lessons[index]];if(activeLesson?.[0]===mi&&activeLesson[1]===index)activeLesson[1]=next;else if(activeLesson?.[0]===mi&&activeLesson[1]===next)activeLesson[1]=index;renderEditor();scheduleSave();}return;}
+    const renameLesson=target.closest('[data-rename-lesson]');if(renameLesson){const [mi,li]=renameLesson.dataset.renameLesson.split(':').map(Number),lesson=editorDocument.modules[mi].lessons[li],name=prompt('Nom de la leçon',lesson.title);if(name?.trim()){lesson.title=name.trim().slice(0,120);renderEditor();scheduleSave();}return;}
+    const deleteLesson=target.closest('[data-del-lesson]');if(deleteLesson){const [mi,li]=deleteLesson.dataset.delLesson.split(':').map(Number);if(confirm('Supprimer cette leçon et tous ses blocs ?')){editorDocument.modules[mi].lessons.splice(li,1);activeLesson=null;activeBlock=null;renderEditor();scheduleSave();}return;}
+    const selectLesson=target.closest('[data-select-lesson]');if(selectLesson){activeLesson=selectLesson.dataset.selectLesson.split(':').map(Number);activeBlock=null;renderEditor();setMobilePane('canvas');return;}
+    const selectBlock=target.closest('[data-select-block]');if(selectBlock){activeBlock=Number(selectBlock.dataset.selectBlock);renderEditor();setMobilePane('inspector');return;}
+    const addBlock=target.closest('[data-add-block]');if(addBlock){const lesson=lessonAt();if(!lesson)return;const type=addBlock.dataset.addBlock,defaults={text:{content:''},code:{content:'',language:'luau',filename:'',explanation:''},challenge:{content:'',objective:'',deliverable:''},quiz:{content:'',question:'',choices:['Option A','Option B'],correct:0}};lesson.blocks.push({id:makeId('block'),type,...defaults[type]});activeBlock=lesson.blocks.length-1;renderEditor();setMobilePane('inspector');scheduleSave();return;}
+    const moveBlock=target.closest('[data-move-block]');if(moveBlock){const lesson=lessonAt(),[index,direction]=moveBlock.dataset.moveBlock.split(':').map(Number),next=index+direction;if(lesson&&next>=0&&next<lesson.blocks.length){[lesson.blocks[index],lesson.blocks[next]]=[lesson.blocks[next],lesson.blocks[index]];activeBlock=next;renderEditor();scheduleSave();}return;}
+    const duplicateBlock=target.closest('[data-duplicate-block]');if(duplicateBlock){const lesson=lessonAt(),index=Number(duplicateBlock.dataset.duplicateBlock);if(lesson){lesson.blocks.splice(index+1,0,{...structuredClone(lesson.blocks[index]),id:makeId('block')});activeBlock=index+1;renderEditor();scheduleSave();}return;}
+    const deleteBlock=target.closest('[data-del-block]');if(deleteBlock){const lesson=lessonAt(),index=Number(deleteBlock.dataset.delBlock);if(lesson&&confirm('Supprimer ce bloc ?')){lesson.blocks.splice(index,1);activeBlock=null;renderEditor();scheduleSave();}return;}
+    const edit=target.closest('[data-edit-course]');if(edit){const course=customCourses.find(item=>item.id===edit.dataset.editCourse);if(course)openForm(course);else toast('Cette formation est introuvable.','triangle-alert');return;}
+    const remove=target.closest('[data-delete-course]');if(remove){const course=customCourses.find(item=>item.id===remove.dataset.deleteCourse);if(!course){toast('Cette formation est introuvable.','triangle-alert');return;}if(!confirm('Supprimer la formation « '+course.title+' » ? Cette action est définitive.'))return;try{await BloxforgeAuth.deleteCourse(course.id);await refreshCourses();buildHome();toast('Formation supprimée.','trash-2');}catch(error){toast(error.message||'Impossible de supprimer cette formation.','triangle-alert');}}
   });
-  v.addEventListener('input',e=>{const target=e.target.closest('[data-block]');if(!target)return;const [mi,li,bi]=target.dataset.block.split(':').map(Number);editorDocument.modules[mi].lessons[li].blocks[bi].content=target.value;scheduleSave();});
-  form.addEventListener('submit',async e=>{
-    e.preventDefault();
-    const title=titleInput.value.trim(),description=v.querySelector('#courseDescription').value.trim();
-    const price=Number(v.querySelector('#coursePrice').value);
-    const lessons=v.querySelector('#courseLessons').value.split(/\r?\n/).map(item=>item.trim()).filter(Boolean);
-    if(!title||!description||!Number.isFinite(price)||price<0||price>10000){
-      toast('Vérifiez le nom, la description et le prix de la formation.','triangle-alert');return;
-    }
-    if(!lessons.length||lessons.length>30||lessons.some(item=>item.length>120)){
-      toast('Ajoutez de 1 à 30 étapes (120 caractères maximum par étape).','triangle-alert');return;
-    }
-    const id=v.querySelector('#courseId').value;
-    const fields={title:title.slice(0,80),description:description.slice(0,360),price:Math.round(price*100)/100,lessons:lessons.map(item=>item.slice(0,120)),document:editorDocument};
-    try{
-      if(id){const current=customCourses.find(c=>c.id===id);fields.expectedVersion=editorVersion;const result=await BloxforgeAuth.updateCourse(id,fields);editorVersion=result.course.version;}
-      else {const result=await BloxforgeAuth.createCourse(fields);editorVersion=result.course.version;}
-      await refreshCourses();buildHome();toast(id?'Formation mise à jour.':'Formation créée.','check');
-    }catch(error){toast(error.message||'Impossible d’enregistrer cette formation.','triangle-alert');}
+  v.addEventListener('input',event=>{
+    const lessonField=event.target.closest('[data-lesson-field]');if(lessonField){const lesson=lessonAt();if(!lesson)return;lesson[lessonField.dataset.lessonField]=lessonField.type==='number'?Math.max(0,Math.min(600,Number(lessonField.value)||0)):lessonField.value.slice(0,120);renderOutline();renderCanvas();scheduleSave();return;}
+    const blockField=event.target.closest('[data-block-field]');if(blockField){const block=blockAt();if(!block)return;const field=blockField.dataset.blockField;if(field==='choices')block.choices=blockField.value.split(/\r?\n/).map(item=>item.trim()).filter(Boolean).slice(0,8);else if(field==='correct')block.correct=Number(blockField.value)||0;else block[field]=blockField.value;renderCanvas();scheduleSave();return;}
+    if(event.target===descriptionInput)v.querySelector('#courseDescriptionCount').textContent=descriptionInput.value.length;
+    if([titleInput,descriptionInput,priceInput].includes(event.target)){v.querySelector('#courseFormTitle').textContent=titleInput.value.trim()||'Formation sans titre';scheduleSave();}
   });
+  form.addEventListener('submit',async event=>{event.preventDefault();clearTimeout(editorTimer);const saved=await persistCourse();if(saved){buildHome();toast('Formation enregistrée.','check');}});
+  setTab('info',false);setMobilePane('canvas');
 }
 
 function setupCatalog(v){

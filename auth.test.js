@@ -120,6 +120,42 @@ test('consumer onboarding is required and creator permissions are enforced serve
   assert.equal(afterLogout.response.status, 401);
 });
 
+test('course studio persists rich blocks and rejects stale editor revisions', async t => {
+  const context = await startServer(t);
+  const creator = await register(context, 'studio@example.test', 'creator');
+  const document = { modules: [{
+    id: 'module-studio', title: 'Premiers pas', description: '', position: 0,
+    lessons: [{
+      id: 'lesson-studio', title: 'Construire une tour', position: 0, type: 'content', durationMinutes: 15,
+      blocks: [
+        { id: 'block-text', type: 'text', content: 'Bienvenue dans la leçon.' },
+        { id: 'block-code', type: 'code', content: 'local tower = script.Parent', language: 'luau', filename: 'Tower.lua', explanation: 'Récupère la tour.' },
+        { id: 'block-challenge', type: 'challenge', content: 'Créez une tour.', objective: 'Construire', deliverable: 'Une tour visible' },
+        { id: 'block-quiz', type: 'quiz', content: '', question: 'Que stocke une variable ?', choices: ['Une valeur', 'Un serveur'], correct: 0 }
+      ]
+    }]
+  }] };
+  const created = await call(context, '/api/courses', {
+    method: 'POST', cookie: creator.cookie,
+    body: { title: 'Studio course', description: 'Rich course content.', price: 0, lessons: ['Construire une tour'], document }
+  });
+  assert.equal(created.response.status, 201);
+  assert.deepEqual(created.payload.course.document.modules[0].lessons[0].blocks.map(block => block.type), ['text', 'code', 'challenge', 'quiz']);
+
+  const changed = await call(context, '/api/courses/' + created.payload.course.id, {
+    method: 'PUT', cookie: creator.cookie,
+    body: { title: 'Studio course v2', description: 'Rich course content.', price: 0, lessons: ['Construire une tour'], document, expectedVersion: 1 }
+  });
+  assert.equal(changed.response.status, 200);
+  assert.equal(changed.payload.course.version, 2);
+
+  const stale = await call(context, '/api/courses/' + created.payload.course.id, {
+    method: 'PUT', cookie: creator.cookie,
+    body: { title: 'Stale course', description: 'Rich course content.', price: 0, lessons: ['Construire une tour'], document, expectedVersion: 1 }
+  });
+  assert.equal(stale.response.status, 409);
+});
+
 test('creators cannot edit or delete another creator’s courses', async t => {
   const context = await startServer(t);
   const first = await register(context, 'first@example.test', 'creator');

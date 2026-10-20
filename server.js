@@ -51,7 +51,8 @@ function validateCourse(input) {
     throw new HttpError(400, 'Vérifiez les limites de longueur de la formation.');
   }
   const document = input.document === undefined ? null : validateCourseDocument(input.document);
-  return { title, description, price: Math.round(input.price * 100) / 100, lessons, ...(document ? { document } : {}) };
+  const expectedVersion = Number.isInteger(input.expectedVersion) && input.expectedVersion > 0 ? input.expectedVersion : undefined;
+  return { title, description, price: Math.round(input.price * 100) / 100, lessons, ...(document ? { document } : {}), ...(expectedVersion ? { expectedVersion } : {}) };
 }
 
 function validateCourseDocument(document) {
@@ -66,9 +67,26 @@ function validateCourseDocument(document) {
       if (!isPlainObject(lesson) || typeof lesson.title !== 'string' || !lesson.title.trim() || lesson.title.length > 120 || !Array.isArray(lesson.blocks)) throw new HttpError(400, 'Leçon invalide.');
       if (++lessonCount > 200) throw new HttpError(400, 'La formation dépasse 200 leçons.'); uniqueId(lesson.id);
       const blocks = lesson.blocks.map(block => {
-        if (!isPlainObject(block) || !['text', 'code'].includes(block.type) || typeof block.content !== 'string' || block.content.length > 20000) throw new HttpError(400, 'Bloc texte ou code invalide.');
+        if (!isPlainObject(block) || !['text', 'code', 'challenge', 'quiz'].includes(block.type) || typeof block.content !== 'string' || block.content.length > 20000) throw new HttpError(400, 'Bloc de contenu invalide.');
         if (++blockCount > 1000) throw new HttpError(400, 'La formation dépasse 1000 blocs.'); uniqueId(block.id);
-        return { id: block.id, type: block.type, content: block.content };
+        const clean = { id: block.id, type: block.type, content: block.content };
+        if (block.type === 'code') {
+          clean.language = String(block.language || 'luau').slice(0, 30);
+          clean.filename = String(block.filename || '').slice(0, 120);
+          clean.explanation = String(block.explanation || '').slice(0, 1000);
+        }
+        if (block.type === 'challenge') {
+          clean.objective = String(block.objective || '').slice(0, 500);
+          clean.deliverable = String(block.deliverable || '').slice(0, 500);
+        }
+        if (block.type === 'quiz') {
+          if (typeof block.question !== 'string' || block.question.length > 1000 || !Array.isArray(block.choices) || block.choices.length < 2 || block.choices.length > 8) throw new HttpError(400, 'Question de quiz invalide.');
+          clean.question = block.question.trim();
+          clean.choices = block.choices.map(choice => String(choice).trim().slice(0, 300));
+          clean.correct = Math.max(0, Math.min(clean.choices.length - 1, Number(block.correct) || 0));
+          if (!clean.question || clean.choices.some(choice => !choice)) throw new HttpError(400, 'Complétez la question et toutes les réponses du quiz.');
+        }
+        return clean;
       });
       return { id: lesson.id, title: lesson.title.trim(), position: li, type: 'content', durationMinutes: Math.max(0, Math.min(600, Number(lesson.durationMinutes) || 0)), blocks };
     });
@@ -412,9 +430,10 @@ function createAppServer(options = {}) {
       const user = requireUser(request);
       requireCreator(user);
       const fields = validateCourse(await readJson(request));
+      const { expectedVersion, ...createFields } = fields;
       const now = new Date().toISOString();
       const course = {
-        id: crypto.randomUUID(), ownerId: user.id, ...fields, version: 1, status: 'draft',
+        id: crypto.randomUUID(), ownerId: user.id, ...createFields, version: 1, status: 'draft',
         createdAt: now, updatedAt: now
       };
       await repository.createCourse(course);
@@ -493,9 +512,8 @@ function createAppServer(options = {}) {
 
 if (require.main === module) {
   const app = createAppServer();
-  const host = process.env.BLOXFORGE_HOST || '127.0.0.1';
-  app.server.listen(app.port, host, () => {
-    console.log('BLOXFORGE local: http://' + host + ':' + app.port);
+  app.server.listen(app.port, '127.0.0.1', () => {
+    console.log('BLOXFORGE local: http://127.0.0.1:' + app.port);
     console.log('Comptes de test locaux uniquement. N’utilisez pas de vrais mots de passe ou données sensibles.');
   });
   app.server.on('error', error => {
