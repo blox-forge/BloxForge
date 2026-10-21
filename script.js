@@ -14,12 +14,38 @@
 })();
 
 'use strict';
+const THEME_KEY='bloxforge_theme';
+function initialTheme(){
+  try{const saved=localStorage.getItem(THEME_KEY);if(saved==='light'||saved==='dark')return saved;}catch(error){}
+  return matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';
+}
+document.documentElement.dataset.theme=initialTheme();
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 const escAttr=s=>esc(s).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 const shuffle=a=>{const r=[...a];for(let i=r.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[r[i],r[j]]=[r[j],r[i]];}return r;};
 function refreshIcons(){try{if(window.lucide)lucide.createIcons();}catch(e){}}
 (function waitIcons(){refreshIcons();let n=0;const iv=setInterval(()=>{if(window.lucide||++n>15){clearInterval(iv);refreshIcons();}},400);})();
+function setupThemeToggle(){
+  const button=$('#themeToggle'),meta=document.querySelector('meta[name="theme-color"]');
+  if(!button)return;
+  const render=()=>{
+    const dark=document.documentElement.dataset.theme==='dark';
+    document.documentElement.style.colorScheme=dark?'dark':'light';
+    button.setAttribute('aria-pressed',String(dark));
+    button.setAttribute('aria-label',dark?'Activer le mode clair':'Activer le mode sombre');
+    button.innerHTML='<i data-lucide="'+(dark?'sun':'moon')+'"></i><span>'+(dark?'Mode clair':'Mode sombre')+'</span>';
+    if(meta)meta.content=dark?'#0D1117':'#FFFFFF';
+    refreshIcons();
+  };
+  button.addEventListener('click',()=>{
+    const next=document.documentElement.dataset.theme==='dark'?'light':'dark';
+    document.documentElement.dataset.theme=next;
+    try{localStorage.setItem(THEME_KEY,next);}catch(error){}
+    render();
+  });
+  render();
+}
 
 /* ---------- KUBO ---------- */
 function kuboSVG(mood){
@@ -1428,6 +1454,7 @@ function killBoot(){
 }
 try{
   kuboAvatar();
+  setupThemeToggle();
   setupProgressTools();
   setupKuboControls();
   setupAccessibility();
